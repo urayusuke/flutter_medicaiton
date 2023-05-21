@@ -68,45 +68,82 @@ class _MedicationCalendarViewState extends State<MedicationCalendarView> {
         selectedDayPredicate: (day) {
           return isSameDay(_selectedDay, day);
         },
-        onDaySelected: (selectedDay, focusedDay) async {
-  if (!isSameDay(_selectedDay, selectedDay)) {
-    setState(() {
+  onDaySelected: (selectedDay, focusedDay) async {
+    if (!isSameDay(_selectedDay, selectedDay)) {
+      setState(() {
       _selectedDay = selectedDay;
       _focusedDay = focusedDay;
     });
+
+    await _fetchMedicationDoses();
 
     var dayKey = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
     var doses = _medicationDoses[dayKey] ?? [];
 
     if (doses.isNotEmpty) {
-      String medicationId = doses[0]['medicationId'].toString();
-      var medication = await dbService.getMedicationById(medicationId);
-      
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text("飲んだ回数"),
-            content: Column(
-              children: <Widget>[
-                Text('薬の名前: ${medication?['name'] ?? 'Unknown'}'),
-                Text('飲んだ回数: ${doses.length}'),
-              ],
+      List<Map<String, dynamic>> medications = [];
+      for (var dose in doses) {
+        String medicationId = dose['medicationId'].toString();
+        var medication = await dbService.getMedicationById(medicationId);
+        medications.add(medication!);
+      }
+
+showDialog(
+  context: context,
+  builder: (context) {
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: Text("飲んだ回数"),
+          content: Container(
+            width: double.maxFinite,
+            child: ListView.builder(
+              itemCount: doses.length,
+              itemBuilder: (BuildContext context, int index) {
+                return ListTile(
+                  title: Text('薬の名前: ${medications[index]['name'] ?? 'Unknown'}'),
+                  subtitle: Text('飲んだ回数: ${doses.length}'),
+                );
+              },
             ),
-            actions: <Widget>[
-              TextButton(
-                child: Text('Close'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          );
-        },
-      );
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('更新'),
+              onPressed: () async {
+                await _fetchMedicationDoses();
+
+                var dayKey = DateTime(_selectedDay!.year, _selectedDay!.month, _selectedDay!.day);
+                doses = _medicationDoses[dayKey] ?? [];
+                medications = [];
+                for (var dose in doses) {
+                  String medicationId = dose['medicationId'].toString();
+                  var medication = await dbService.getMedicationById(medicationId);
+                  medications.add(medication!);
+                }
+                setState(() {});
+              },
+            ),
+            TextButton(
+              child: Text('閉じる'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  },
+);
+
+
+
+
     }
   }
 },
+
 
         onFormatChanged: (format) {
           if (_calendarFormat != format) {

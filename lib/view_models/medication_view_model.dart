@@ -23,8 +23,8 @@ class MedicationViewModel extends StateNotifier<AsyncValue<List<Medication>>> {
       final medsData = await databaseService.getMedications();
       final meds = medsData!.map((medMap) => Medication.fromMap(medMap)).toList();
       state = AsyncValue.data(meds);
-    } catch (e) {
-      state = AsyncValue.error(e);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
     }
   }
 
